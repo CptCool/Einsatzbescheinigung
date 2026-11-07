@@ -1,0 +1,10 @@
+Mitgelieferte Schriften (metrisch identisch zu Arial / Arial Narrow)
+
+LiberationSans-Regular.ttf, LiberationSans-Bold.ttf
+  Liberation Fonts 2.1.5, SIL Open Font License 1.1 (LiberationSans-LICENSE.txt)
+  Quelle: https://github.com/liberationfonts/liberation-fonts
+
+LiberationSansNarrow-Regular.ttf, LiberationSansNarrow-Bold.ttf
+  Liberation Sans Narrow 1.07.4, GPLv2 mit Font-Ausnahme
+  (LiberationSansNarrow-LICENSE.txt, LiberationSansNarrow-COPYING.txt)
+  Quelltext: https://github.com/liberationfonts/liberation-sans-narrow

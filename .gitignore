@@ -1,0 +1,21 @@
+# Python / Build
+__pycache__/
+*.pyc
+.venv/
+build/
+dist/
+*.egg-info/
+
+# Persönliche Daten – niemals ins Repository:
+# Original-PDFs (Adressen), Unterschrift/Logos, exportierte Vorlagen, Kontaktlisten
+private/
+*.pdf
+*.einsatzvorlage
+# Ausnahme: die generische Beispielvorlage (Musterstadt, frei erfundene Logos/Unterschrift)
+!einsatzapp/beispiel/Musterstadt_LZ1.einsatzvorlage
+*.csv
+*.xlsx
+
+# Lokale Dateien
+.DS_Store
+/Einsatzbescheinigung

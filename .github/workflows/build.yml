@@ -1,0 +1,100 @@
+name: Build
+
+on:
+  push:
+    branches: [main]
+    tags: ["v*"]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: ${{ matrix.name }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: macos-latest
+            name: macOS
+          - os: windows-latest
+            name: Windows
+          - os: ubuntu-latest
+            name: Linux
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.12"
+
+      - name: Tk-Bibliotheken (Linux)
+        if: runner.os == 'Linux'
+        run: sudo apt-get update && sudo apt-get install -y tk8.6 libtk8.6 xdg-utils
+
+      - name: Abhängigkeiten
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt pyinstaller==6.22.3
+
+      - name: Tests
+        run: python -m unittest discover -s tests -t . -v
+
+      - name: App bauen
+        run: pyinstaller --noconfirm einsatzbescheinigung.spec
+
+      - name: Selbsttest des fertigen Programms (macOS/Linux)
+        if: runner.os != 'Windows'
+        run: |
+          if [ "$RUNNER_OS" = "macOS" ]; then BIN=dist/Einsatzbescheinigung.app/Contents/MacOS/Einsatzbescheinigung; else BIN=dist/Einsatzbescheinigung; fi
+          "$BIN" --selbsttest selbsttest.pdf
+          test -s selbsttest.pdf
+
+      - name: Selbsttest des fertigen Programms (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          $p = Start-Process -FilePath dist\Einsatzbescheinigung.exe -ArgumentList '--selbsttest','selbsttest.pdf' -Wait -PassThru
+          if ($p.ExitCode -ne 0 -or -not (Test-Path selbsttest.pdf)) { throw "Selbsttest fehlgeschlagen ($($p.ExitCode))" }
+
+      - name: Paket (macOS)
+        if: runner.os == 'macOS'
+        run: ditto -c -k --sequesterRsrc --keepParent dist/Einsatzbescheinigung.app Einsatzbescheinigung-macOS.zip
+
+      - name: Paket (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: Copy-Item dist/Einsatzbescheinigung.exe Einsatzbescheinigung-Windows.exe
+
+      - name: Paket (Linux)
+        if: runner.os == 'Linux'
+        run: tar -czf Einsatzbescheinigung-Linux.tar.gz -C dist Einsatzbescheinigung
+
+      - uses: actions/upload-artifact@v7
+        with:
+          name: Einsatzbescheinigung-${{ matrix.name }}
+          path: Einsatzbescheinigung-*.*
+          if-no-files-found: error
+
+  release:
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v8
+        with:
+          path: pakete
+          merge-multiple: true
+      - name: Release anlegen
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "${GITHUB_REF_NAME}" pakete/* \
+            --repo "${GITHUB_REPOSITORY}" \
+            --title "Einsatzbescheinigung ${GITHUB_REF_NAME}" \
+            --notes "Downloads: macOS (Apple Silicon) als .zip, Windows als .exe, Linux als .tar.gz. Installationshinweise siehe README."
