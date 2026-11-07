@@ -89,7 +89,7 @@ Fertige Programme stehen unter **Releases** (gebaut von GitHub Actions):
   *Weitere Informationen › Trotzdem ausführen* klicken.
 - **Linux**: `tar -xzf Einsatzbescheinigung-Linux.tar.gz && ./Einsatzbescheinigung`
 
-Eine neue Version entsteht durch ein Git-Tag, z. B. `git tag v1.1.1 && git push --tags`
+Eine neue Version entsteht durch ein Git-Tag, z. B. `git tag v1.1.2 && git push origin v1.1.2`
 (vorher `__version__` in `einsatzapp/__init__.py` anpassen).
 
 ### Aus dem Quelltext starten
@@ -122,3 +122,13 @@ Hände; `.gitignore` hält sie (außer der Beispielvorlage) aus dem Repository h
 Wie im Original wird **Arial Narrow** verwendet, sofern auf dem Rechner vorhanden. Sonst nutzt die
 App die mitgelieferte, maßgleiche **Liberation Sans (Narrow)** (© Red Hat, GPLv2 mit
 Font-Ausnahme bzw. SIL OFL, siehe `einsatzapp/fonts/`). Das Layout bleibt dadurch identisch.
+
+## Lizenz
+
+Einsatzbescheinigung ist freie Software unter der [MIT-Lizenz](LICENSE).
+
+Eingebundene Komponenten stehen unter ihren eigenen Lizenzen: fpdf2 (LGPL-3.0), pypdf
+(BSD-3-Clause), openpyxl und et_xmlfile (MIT), Pillow (MIT-CMU), fontTools (MIT) sowie die
+Liberation-Schriften (SIL OFL 1.1 bzw. GPLv2 mit Font-Ausnahme). Die fertigen Programme enthalten
+zusätzlich Python (PSF-Lizenz) und Tcl/Tk (BSD-artig). Alle Lizenztexte zeigt die App unter
+*Einstellungen › Lizenzen …*; beim Bauen werden sie von `einsatzapp/lizenzinfo.py` zusammengestellt.

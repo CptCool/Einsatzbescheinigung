@@ -122,7 +122,8 @@ class App(tk.Tk):
 
 
 def _selbsttest(ziel: str) -> int:
-    """Prüft das fertige Paket ohne Oberfläche: Schriften, Beispielvorlage, PDF + Sammel-PDF."""
+    """Prüft das fertige Paket ohne Oberfläche: Schriften, Beispielvorlage, Lizenztexte,
+    PDF + Sammel-PDF."""
     import tempfile
     from pathlib import Path
 
@@ -137,6 +138,13 @@ def _selbsttest(ziel: str) -> int:
     store.ersteinrichtung()
     if not store.image_path(store.template["unterschrift"]["datei"]):
         return 2
+    from .lizenzinfo import DATEI
+
+    lizenzen = resource_dir() / DATEI
+    if getattr(sys, "frozen", False) and not (
+            lizenzen.is_file() and "MIT License" in (t := lizenzen.read_text(encoding="utf-8"))
+            and "GNU LESSER GENERAL PUBLIC LICENSE" in t):
+        return 3
     ctx, gender = demo_context()
     einzel = tmp / "einzel.pdf"
     r = Renderer(store.template, store.assets, use_system_fonts=False)

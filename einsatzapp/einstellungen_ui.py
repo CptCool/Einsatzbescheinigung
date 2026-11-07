@@ -1,14 +1,18 @@
-"""Bereich „Einstellungen“: Mailprogramm, BCC, Ablageordner, Test-Entwurf."""
+"""Bereich „Einstellungen“: Mailprogramm, BCC, Ablageordner, Test-Entwurf, Lizenzen."""
 
 import threading
 import tkinter as tk
+import webbrowser
 from tkinter import filedialog, messagebox, simpledialog, ttk
 
 from . import __version__
 from .generator import vorschau
 from .kontakte_ui import EMAIL_RE
+from .lizenzinfo import QUELLTEXT
+from .lizenzinfo import text as lizenztext
 from .mailer import PROGRAMME, Entwurf, Mailer, ermittle_auto, verfuegbare_programme
 from .paths import open_path
+from .widgets import center_on
 
 HINWEISE = {
     "applemail": "Die Entwürfe öffnen sich als Fenster in Apple Mail. Beim ersten Mal fragt macOS, "
@@ -84,8 +88,12 @@ class EinstellungenTab(ttk.Frame):
                   style="Hinweis.TLabel").pack(side="left")
         ttk.Button(daten, text="Datenordner öffnen", command=lambda: open_path(self.store.dir)).pack(side="right")
 
-        ttk.Label(self, text=f"Einsatzbescheinigung {__version__}", style="Hinweis.TLabel").grid(
-            row=4, column=0, sticky="w", pady=(16, 0))
+        info = ttk.Frame(self)
+        info.grid(row=4, column=0, sticky="w", pady=(16, 0))
+        ttk.Label(info, text=f"Einsatzbescheinigung {__version__} · freie Software unter der MIT-Lizenz",
+                  style="Hinweis.TLabel").pack(side="left")
+        ttk.Button(info, text="Lizenzen …", command=lambda: LizenzDialog(self)).pack(side="left",
+                                                                                     padx=(10, 0))
         self._zeige_hinweise()
 
     def _prog_key(self) -> str:
@@ -168,3 +176,41 @@ class EinstellungenTab(ttk.Frame):
                                 "Mailprogramm prüfen und anschließend verwerfen.", parent=self)
         else:
             messagebox.showerror("Test-Entwurf", info, parent=self)
+
+
+class LizenzDialog(tk.Toplevel):
+    """Zeigt die MIT-Lizenz der App und die Lizenzen der mitgelieferten Komponenten."""
+
+    def __init__(self, parent):
+        super().__init__(parent)
+        top = parent.winfo_toplevel()
+        self.title("Lizenzen")
+        self.transient(top)
+        self.protocol("WM_DELETE_WINDOW", self._schliessen)
+        self.bind("<Escape>", lambda _e: self._schliessen())
+        frame = ttk.Frame(self, padding=14)
+        frame.pack(fill="both", expand=True)
+        frame.columnconfigure(0, weight=1)
+        frame.rowconfigure(0, weight=1)
+        txt = tk.Text(frame, width=100, height=32, wrap="none", font="TkFixedFont", relief="solid",
+                      borderwidth=1, padx=8, pady=6)
+        sy = ttk.Scrollbar(frame, orient="vertical", command=txt.yview)
+        sx = ttk.Scrollbar(frame, orient="horizontal", command=txt.xview)
+        txt.configure(yscrollcommand=sy.set, xscrollcommand=sx.set)
+        txt.grid(row=0, column=0, sticky="nsew")
+        sy.grid(row=0, column=1, sticky="ns")
+        sx.grid(row=1, column=0, sticky="ew")
+        txt.insert("1.0", lizenztext())
+        txt.configure(state="disabled")
+        knoepfe = ttk.Frame(frame)
+        knoepfe.grid(row=2, column=0, columnspan=2, sticky="ew", pady=(10, 0))
+        ttk.Button(knoepfe, text="Quelltext auf GitHub",
+                   command=lambda: webbrowser.open(QUELLTEXT)).pack(side="left")
+        ttk.Button(knoepfe, text="Schließen", command=self._schliessen).pack(side="right")
+        center_on(self, top)
+        self.focus_force()
+
+    def _schliessen(self):
+        top = self.master.winfo_toplevel()
+        self.destroy()
+        top.focus_force()

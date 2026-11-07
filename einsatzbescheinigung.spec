@@ -3,16 +3,24 @@
 import sys
 
 sys.path.insert(0, ".")
+from pathlib import Path  # noqa: E402
+
 from einsatzapp import __version__  # noqa: E402
+from einsatzapp.lizenzinfo import DATEI, erzeuge_text  # noqa: E402
 
 NAME = "Einsatzbescheinigung"
 ICON = "einsatzapp/icon.png"
+
+# Lizenztexte der App und aller mitgelieferten Komponenten (in der App: Einstellungen › Lizenzen)
+LIZENZEN = Path(workpath) / DATEI  # noqa: F821 – von PyInstaller bereitgestellt
+LIZENZEN.parent.mkdir(parents=True, exist_ok=True)
+LIZENZEN.write_text(erzeuge_text(), encoding="utf-8")
 
 a = Analysis(
     ["main.py"],
     pathex=["."],
     datas=[("einsatzapp/fonts", "einsatzapp/fonts"), ("einsatzapp/beispiel", "einsatzapp/beispiel"),
-           ("einsatzapp/icon.png", "einsatzapp")],
+           ("einsatzapp/icon.png", "einsatzapp"), (str(LIZENZEN), "einsatzapp")],
     hiddenimports=["PIL._tkinter_finder"],
     excludes=["numpy", "matplotlib", "pytest", "IPython"],
 )

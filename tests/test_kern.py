@@ -1,4 +1,5 @@
-"""Tests ohne Oberfläche: Platzhalter, Parser, PDF, gespeicherte Einsätze, Import, .eml.
+"""Tests ohne Oberfläche: Platzhalter, Parser, PDF, gespeicherte Einsätze, Import, .eml,
+Lizenztexte.
 
 Start: python -m unittest discover -s tests -t .
 """
@@ -18,6 +19,7 @@ os.environ.setdefault("EINSATZBESCHEINIGUNG_DATEN", tempfile.mkdtemp(prefix="eb_
 from einsatzapp.generator import (Einsatz, Teilnahme, einsatz_ordner, erzeuge,  # noqa: E402
                                   unknown_placeholders)
 from einsatzapp.importer import auto_zuordnung, lese_tabelle, wende_an  # noqa: E402
+from einsatzapp.lizenzinfo import EIGENE_LIZENZ, PAKETE, erzeuge_text  # noqa: E402
 from einsatzapp.mailer import Entwurf, schreibe_eml  # noqa: E402
 from einsatzapp.pdfgen import resolve_fonts  # noqa: E402
 from einsatzapp.placeholders import (build_context, demo_context, gender_index,  # noqa: E402
@@ -296,6 +298,41 @@ class EmlTest(unittest.TestCase):
         self.assertEqual(msg["Bcc"], "lz@example.org")
         self.assertEqual(msg["Subject"], "Betreff – ä")
         self.assertEqual([p.get_filename() for p in msg.iter_attachments()], ["x.pdf"])
+
+
+
+class LizenzTest(unittest.TestCase):
+    def test_lizenztext_vollstaendig(self):
+        t = erzeuge_text()
+        self.assertIn(EIGENE_LIZENZ.read_text(encoding="utf-8").strip(), t)
+        self.assertTrue(EIGENE_LIZENZ.read_text(encoding="utf-8").startswith("MIT License"))
+        for name, lizenz, _ in PAKETE:
+            self.assertRegex(t, rf"\d+\. {re.escape(name)} [\d.]+ – {re.escape(lizenz)}")
+        for kennung in ("GNU LESSER GENERAL PUBLIC LICENSE", "GNU GENERAL PUBLIC LICENSE",
+                        "Version 3, 29 June 2007", "SIL OPEN FONT LICENSE", "Python Software Foundation",
+                        "Regents of the University of"):
+            self.assertIn(kennung, t)
+
+    def test_alle_abhaengigkeiten_erfasst(self):
+        """Jedes Paket, das mit requirements.txt ins Programm kommt, hat einen Lizenzabschnitt."""
+        from importlib import metadata
+
+        def norm(n):
+            return re.sub(r"[-_.]+", "-", n).lower()
+
+        wurzeln = [re.split(r"[<>=!~ ;\[]", z, 1)[0]
+                   for z in (Path(__file__).parent.parent / "requirements.txt").read_text().splitlines()
+                   if z.strip() and not z.startswith("#")]
+        offen, gesehen = list(wurzeln), set()
+        while offen:
+            name = norm(offen.pop())
+            if name in gesehen:
+                continue
+            gesehen.add(name)
+            for req in metadata.requires(name) or []:
+                if ";" not in req:  # bedingte Abhängigkeiten (alte Python-Versionen, Extras) fehlen im Paket
+                    offen.append(re.split(r"[<>=!~ ;\[(]", req, 1)[0])
+        self.assertEqual(gesehen, {norm(n) for n, _, _ in PAKETE})
 
 
 if __name__ == "__main__":
