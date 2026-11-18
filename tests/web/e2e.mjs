@@ -2,6 +2,7 @@
 //
 //   npm ci --prefix tests/web && tests/web/node_modules/.bin/playwright install chromium
 //   node tests/web/e2e.mjs build/web [bilder-ordner]
+//   node tests/web/e2e.mjs https://cptcool.github.io/Einsatzbescheinigung/   (veröffentlichte Version)
 //
 // BROWSER=chromium (Standard), firefox oder webkit wählt die Browser-Engine.
 // Mit CHROME_CHANNEL=chrome wird ein installiertes Google Chrome statt des Playwright-Chromiums verwendet.
@@ -11,7 +12,9 @@ import { tmpdir } from "node:os";
 import { extname, join, resolve, sep } from "node:path";
 import { chromium, firefox, webkit } from "playwright";
 
-const SITE = resolve(process.argv[2] || "build/web");
+const ZIEL = process.argv[2] || "build/web";
+const LIVE = /^https?:\/\//.test(ZIEL);
+const SITE = LIVE ? null : resolve(ZIEL);
 const BILDER = process.argv[3] ? resolve(process.argv[3]) : null;
 const TYPEN = {
   ".html": "text/html; charset=utf-8", ".js": "text/javascript; charset=utf-8", ".mjs": "text/javascript; charset=utf-8",
@@ -71,8 +74,8 @@ async function kontaktAnlegen(page, werte) {
 }
 
 async function main() {
-  const srv = await server();
-  const url = `http://127.0.0.1:${srv.address().port}/`;
+  const srv = LIVE ? null : await server();
+  const url = LIVE ? ZIEL : `http://127.0.0.1:${srv.address().port}/`;
   const engine = process.env.BROWSER || "chromium";
   const typ = { chromium, firefox, webkit }[engine];
   if (!typ) throw new Error(`Unbekannter Browser: ${engine}`);
@@ -222,7 +225,7 @@ async function main() {
     process.exitCode = 1;
   } finally {
     await browser.close();
-    srv.close();
+    srv?.close();
   }
 }
 
