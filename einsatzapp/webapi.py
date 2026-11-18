@@ -453,6 +453,7 @@ def erstellen(nummer: str, sd: str, st: str, ed: str, et: str, ausst: str, zeile
     paket, ergebnis_zeilen = [], []
     for erg in ergebnisse:
         zeile = {"name": anzeige_name(erg.contact), "ok": True, "info": "PDF erstellt",
+                 "email": erg.contact["email"], "betreff": erg.betreff, "text": erg.text,
                  "pdf": str(erg.pdf), "pdf_name": erg.pdf.name, "eml": None, "mailto": None}
         paket.append(erg.pdf)
         if mails and erg.contact["email"]:

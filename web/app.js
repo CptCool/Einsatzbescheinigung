@@ -461,41 +461,107 @@ const Einsatz = {
 };
 
 // ============================================================================ Ergebnis
+// Ein Browser darf keine Datei an einen mailto-Link hängen (das kann kein Mailprogramm mehr, aus Sicherheitsgründen).
+// Deshalb drei Wege, die funktionieren:
+//  1. „E-Mail öffnen“ (Empfänger, Betreff, Text) und das PDF als Kachel ins Mail-Fenster ziehen – Chrome/Edge legen
+//     die Datei dabei selbst in ihrem Temp-Ordner ab (Drag-Typ „DownloadURL“).
+//  2. „Teilen …“: PDF samt Betreff und Text über das Teilen-Menü des Systems (Web Share API); die Adresse kommt
+//     in die Zwischenablage.
+//  3. „E-Mail-Entwurf (.eml)“: fertiger Entwurf mit Anhang – Outlook (klassisch) und Thunderbird öffnen ihn direkt.
+const ZIEHEN_MOEGLICH = Boolean(navigator.userAgentData?.brands?.some((b) => /Chromium|Google Chrome|Microsoft Edge/.test(b.brand)));
+
 const Ergebnis = {
-  zeigen(r) {
-    const zeilen = r.zeilen.map((z) => h("tr", { class: z.ok ? "" : "warn" },
-      h("td", { text: `${z.ok ? "✓" : "⚠"}  ${z.name}` }),
-      h("td", { class: "hinweis", text: z.info }),
-      h("td", { class: "aktionen" },
-        h("button", { type: "button", class: "klein", onclick: sicher(() => herunterladen(z.pdf, z.pdf_name)) }, "PDF"),
+  async zeigen(r) {
+    const urls = [];
+    const pdfs = await Promise.all(r.zeilen.map(async (z) => {
+      const b = await blob(z.pdf, z.pdf_name);
+      const url = URL.createObjectURL(b);
+      urls.push(url);
+      return { url, datei: new File([b], z.pdf_name, { type: "application/pdf" }) };
+    }));
+    const teilenMoeglich = pdfs.length > 0 && Boolean(navigator.canShare?.({ files: [pdfs[0].datei] }));
+    const meldungEl = h("p", { class: "info", "aria-live": "polite" });
+
+    const teilen = async (z, datei) => {
+      let kopiert = false;
+      if (z.email) {
+        try {
+          await navigator.clipboard.writeText(z.email);
+          kopiert = true;
+        } catch { /* Zwischenablage nicht erlaubt */ }
+      }
+      meldungEl.textContent = z.email ? (kopiert ? `Empfänger ${z.email} liegt in der Zwischenablage – im Mail-Fenster bei „An“ einfügen.`
+        : `Empfänger im Mail-Fenster bei „An“ eintragen: ${z.email}`) : "";
+      try {
+        await navigator.share({ files: [datei], title: z.betreff, text: z.text });
+      } catch (err) {
+        if (err.name !== "AbortError") throw new Hinweis(`Teilen ist hier nicht möglich (${err.message}). Bitte einen der anderen Wege nutzen.`);
+      }
+    };
+
+    const zeilen = r.zeilen.map((z, i) => {
+      const { url, datei } = pdfs[i];
+      const kachel = ZIEHEN_MOEGLICH ? h("span", {
+        class: "kachel", draggable: "true", role: "img", "aria-label": `PDF ${z.pdf_name} zum Hineinziehen`,
+        title: "Nach „E-Mail öffnen“ diese Kachel mit der Maus in das Mail-Fenster ziehen – das PDF wird angehängt.",
+      }, "📄 PDF hineinziehen") : null;
+      kachel?.addEventListener("dragstart", (e) => {
+        e.dataTransfer.setData("DownloadURL", `application/pdf:${z.pdf_name}:${url}`);
+        e.dataTransfer.setData("text/uri-list", url);
+        e.dataTransfer.effectAllowed = "copy";
+      });
+      const aktionen = [
+        z.mailto ? h("a", { class: "knopf klein", href: z.mailto, title: "Neue Mail mit Empfänger, Betreff und Text im Standard-Mailprogramm" }, "✉ E-Mail öffnen") : null,
+        z.mailto ? kachel : null,
         z.eml ? h("button", {
-          type: "button", class: "klein", title: "Als Datei herunterladen und öffnen – Outlook (klassisch) und Thunderbird zeigen sie als Entwurf mit Anhang",
+          type: "button", class: "klein", title: "Fertiger Entwurf mit PDF-Anhang – Outlook (klassisch) und Thunderbird öffnen ihn per Doppelklick",
           onclick: sicher(() => herunterladen(z.eml, z.eml_name)),
         }, "E-Mail-Entwurf (.eml)") : null,
-        z.mailto ? h("a", { class: "knopf klein", href: z.mailto, title: "Neue Mail im Mailprogramm – das PDF bitte selbst anhängen" },
-          "Im Mailprogramm öffnen") : null)));
+        teilenMoeglich && z.mailto ? h("button", {
+          type: "button", class: "klein", title: "PDF mit Betreff und Text an Mail oder Outlook übergeben (Teilen-Menü des Systems)",
+          onclick: sicher(() => teilen(z, datei)),
+        }, "Teilen …") : null,
+        h("button", { type: "button", class: "klein", onclick: sicher(() => herunterladen(z.pdf, z.pdf_name)) }, "PDF"),
+      ];
+      return h("tr", { class: z.ok ? "" : "warn" },
+        h("td", {}, `${z.ok ? "✓" : "⚠"}  ${z.name}`,
+          h("div", { class: "hinweis", text: z.email || (r.mails ? "keine E-Mail-Adresse – nur PDF" : "") })),
+        h("td", { class: "aktionen" }, aktionen));
+    });
+
+    const wege = [];
+    if (ZIEHEN_MOEGLICH) wege.push("„✉ E-Mail öffnen“ klicken (Empfänger, Betreff und Text sind ausgefüllt) und dann die Kachel „📄 PDF hineinziehen“ mit der Maus in das Mail-Fenster ziehen.");
+    wege.push("„E-Mail-Entwurf (.eml)“ herunterladen und öffnen – Outlook (klassisch) und Thunderbird zeigen einen fertigen Entwurf mit Anhang.");
+    if (teilenMoeglich) wege.push("„Teilen …“ übergibt PDF, Betreff und Text an Mail oder Outlook; die E-Mail-Adresse liegt dann in der Zwischenablage.");
+    if (!ZIEHEN_MOEGLICH) wege.push("„✉ E-Mail öffnen“ startet eine neue Mail mit Text – das PDF (Knopf „PDF“) dann selbst anhängen. In Chrome und Edge lässt sich das PDF auch direkt in die Mail ziehen.");
+
     const hinweise = r.hinweise.map((t) => h("p", { class: "fehler", text: `⚠  ${t}` }));
     const sicherung = Einstellungen.letzteSicherung();
     const erinnerung = !sicherung || Date.now() - sicherung > 14 * 86400000
       ? h("p", { class: "hinweis", text: "Tipp: Unter „Einstellungen“ regelmäßig eine Datensicherung herunterladen." }) : null;
     const inhalt = h("div", {},
-      r.mails ? h("p", { class: "info", text: "Die E-Mails wurden NICHT gesendet. Bitte jeden Entwurf öffnen, prüfen und selbst auf „Senden“ klicken." }) : null,
+      r.mails ? h("p", { class: "info", text: "Die E-Mails wurden NICHT gesendet. Bitte jede E-Mail prüfen und selbst auf „Senden“ klicken." }) : null,
       h("div", { class: "ergebnis-aktionen" },
         h("button", { type: "button", class: "primaer", onclick: sicher(() => herunterladen(r.zip, r.zip_name)) },
           r.mails ? "Alles als ZIP herunterladen (PDFs und E-Mail-Entwürfe)" : "Alle PDFs als ZIP herunterladen"),
         r.sammel ? h("button", { type: "button", onclick: sicher(() => pdfAnsehen(r.sammel, r.sammel_name, "Sammel-PDF")) },
           `Sammel-PDF ansehen (${r.gesamt} Bescheinigung${r.gesamt !== 1 ? "en" : ""})`) : null),
       h("div", { class: "tabelle-rahmen ergebnis-liste" }, h("table", { class: "liste kompakt" }, h("tbody", {}, zeilen))),
+      meldungEl,
       hinweise,
-      r.mails ? h("p", { class: "hinweis", text: "So geht’s weiter: „E-Mail-Entwurf (.eml)“ herunterladen und öffnen (Outlook: Doppelklick) → prüfen → Senden. "
-        + "„Im Mailprogramm öffnen“ startet eine neue Mail mit Text – das PDF dann bitte selbst anhängen." }) : null,
+      r.mails ? h("div", { class: "hinweis" }, h("p", { text: "So kommt das PDF in die E-Mail – je nach Mailprogramm:" }),
+        h("ul", {}, wege.map((w) => h("li", { text: w })))) : null,
       h("p", { class: "hinweis", text: "Der Einsatz ist gespeichert. Vergessene Kameraden lassen sich jederzeit über „Weitere Kameraden ergänzen“ oder „Gespeicherte Einsätze“ nachtragen." }),
       erinnerung);
-    return dialog({
-      titel: r.titel, klasse: "breit", inhalt, abbruch: "schliessen",
-      knoepfe: [{ text: "Neuer Einsatz", wert: "neu" }, { text: "Weitere Kameraden ergänzen", wert: "ergaenzen" },
-        { text: "Schließen", wert: "schliessen", art: "primaer" }],
-    });
+    try {
+      return await dialog({
+        titel: r.titel, klasse: "breit", inhalt, abbruch: "schliessen",
+        knoepfe: [{ text: "Neuer Einsatz", wert: "neu" }, { text: "Weitere Kameraden ergänzen", wert: "ergaenzen" },
+          { text: "Schließen", wert: "schliessen", art: "primaer" }],
+      });
+    } finally {
+      for (const url of urls) URL.revokeObjectURL(url);
+    }
   },
 };
 

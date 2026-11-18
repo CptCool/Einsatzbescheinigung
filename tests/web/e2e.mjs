@@ -57,6 +57,7 @@ async function download(page, ausloeser) {
 }
 
 const knopf = (page, name) => page.getByRole("button", { name, exact: true });
+let engine = "chromium";
 const dialogKnopf = (page, name) => page.locator("dialog[open]").getByRole("button", { name, exact: true });
 
 async function bereit(page) {
@@ -76,7 +77,7 @@ async function kontaktAnlegen(page, werte) {
 async function main() {
   const srv = LIVE ? null : await server();
   const url = LIVE ? ZIEL : `http://127.0.0.1:${srv.address().port}/`;
-  const engine = process.env.BROWSER || "chromium";
+  engine = process.env.BROWSER || "chromium";
   const typ = { chromium, firefox, webkit }[engine];
   if (!typ) throw new Error(`Unbekannter Browser: ${engine}`);
   const browser = await typ.launch(engine === "chromium" ? { channel: process.env.CHROME_CHANNEL || undefined } : {});
@@ -147,8 +148,19 @@ async function main() {
     const emlText = eml.daten.toString("latin1");
     ok(emlText.includes("X-Unsent: 1") && emlText.includes("To: max@example.org") && emlText.includes("application/pdf"),
       "E-Mail-Entwurf mit Empfänger und PDF-Anhang");
-    const mailto = await zeileMax.getByRole("link", { name: "Im Mailprogramm öffnen" }).getAttribute("href");
+    const mailto = await zeileMax.getByRole("link", { name: "✉ E-Mail öffnen" }).getAttribute("href");
     ok(mailto.startsWith("mailto:max@example.org?subject="), "mailto-Link vorhanden");
+    const kacheln = await zeileMax.locator(".kachel").count();
+    if (engine === "chromium") {
+      const ziehen = await zeileMax.locator(".kachel").evaluate((el) => {
+        const dt = new DataTransfer();
+        el.dispatchEvent(new DragEvent("dragstart", { dataTransfer: dt, bubbles: true }));
+        return dt.getData("DownloadURL");
+      });
+      ok(kacheln === 1 && /^application\/pdf:.*_Mustermann_Max\.pdf:blob:/.test(ziehen), "PDF-Kachel zum Hineinziehen (DownloadURL)");
+    } else {
+      ok(kacheln === 0, "keine Zieh-Kachel außerhalb von Chrome/Edge");
+    }
     ok((await page.locator("dialog[open] tr.warn", { hasText: "Musterfrau, Erika" }).count()) === 1, "ohne E-Mail: nur PDF, Hinweis");
 
     // ------------------------------------------------------------ Kamerad nachtragen

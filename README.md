@@ -123,11 +123,19 @@ die PDFs sind also identisch. Bedienung und Bereiche sind die gleichen.
   eine ZIP-Datei, die sich auch in einem anderen Browser oder auf einem anderen Rechner einspielen
   lässt. Vorlagen (`.einsatzvorlage`) und Kontaktlisten (CSV/Excel) sind mit der Desktop-App
   austauschbar.
-- **E-Mail-Entwürfe.** Ein Browser darf Outlook & Co. nicht fernsteuern. Deshalb entsteht je
-  Kamerad eine **.eml-Datei mit PDF-Anhang**: herunterladen und öffnen – Outlook (klassisch) und
-  Thunderbird zeigen sie als bearbeitbaren Entwurf. Alternativ öffnet *Im Mailprogramm öffnen*
-  eine neue Mail mit Empfänger, Betreff und Text; das PDF wird dann von Hand angehängt. Alles auf
-  einmal gibt es als ZIP.
+- **E-Mail-Entwürfe.** Ein Browser darf Outlook & Co. nicht fernsteuern, und an einen
+  `mailto:`-Link lässt sich kein Anhang hängen (kein Standard; Mailprogramme ignorieren
+  `attach=`-Parameter aus Sicherheitsgründen – getestet mit Apple Mail und Thunderbird). Deshalb
+  gibt es je Kamerad drei Wege:
+  - **✉ E-Mail öffnen** + **📄 PDF hineinziehen**: öffnet eine neue Mail mit Empfänger, Betreff
+    und Text; danach die Kachel mit der Maus ins Mail-Fenster ziehen (Chrome und Edge legen die
+    Datei dabei selbst ab). Funktioniert mit jedem Mailprogramm.
+  - **E-Mail-Entwurf (.eml)**: fertiger Entwurf mit PDF-Anhang zum Herunterladen und Öffnen –
+    Outlook (klassisch) und Thunderbird zeigen ihn als bearbeitbaren Entwurf.
+  - **Teilen …**: übergibt PDF, Betreff und Text an das Teilen-Menü des Systems (z. B. Apple Mail);
+    die E-Mail-Adresse liegt dann in der Zwischenablage.
+
+  Alles auf einmal (PDFs und .eml-Entwürfe) gibt es als ZIP.
 - **Schrift.** Im Browser wird immer die maßgleiche *Liberation Sans Narrow* verwendet (Arial
   Narrow ist dort nicht verfügbar) – das Layout bleibt gleich.
 - Die App sollte nur in **einem** Tab geöffnet sein; ein zweiter Tab weist darauf hin.
