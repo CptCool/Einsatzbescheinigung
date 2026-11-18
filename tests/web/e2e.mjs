@@ -167,7 +167,8 @@ async function main() {
     await page.click("#r-verlauf");
     await page.locator("#v-liste tbody tr", { hasText: "2026-117" }).waitFor();
     ok((await page.locator("#v-liste tbody tr td").nth(3).textContent()) === "3", "nach Neuladen: Einsatz mit 3 Bescheinigungen gespeichert");
-    ok((await page.locator("#v-details tbody tr").count()) === 3, "Details: drei Kameraden");
+    await page.waitForFunction(() => document.querySelectorAll("#v-details tbody tr").length === 3);
+    ok(true, "Details: drei Kameraden");
     await bild(page, "6-verlauf");
     const paket = await download(page, () => knopf(page, "PDFs herunterladen (ZIP)").click());
     ok(paket.daten.subarray(0, 2).toString() === "PK", "ZIP aller PDFs aus dem Verlauf");
