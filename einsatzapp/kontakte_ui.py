@@ -1,20 +1,13 @@
 """Bereich „Kontakte“: Kameraden anlegen, bearbeiten, importieren, exportieren."""
 
-import re
 import tkinter as tk
 from pathlib import Path
 from tkinter import filedialog, messagebox, ttk
 
+from .formulare import ANREDEN, DIENSTGRADE, EMAIL_RE
+from .formulare import KONTAKT_FORMULAR as FELDER
 from .importer import ZIELFELDER, auto_zuordnung, exportiere_csv, lese_tabelle, wende_an
 from .widgets import center_on
-
-DIENSTGRADE = ["FMA", "FFA", "FM", "FF", "OFM", "OFF", "HFM", "HFF", "UBM", "BM", "OBM", "HBM",
-               "BI", "BOI", "BAM"]
-ANREDEN = ["Herr", "Frau", "keine Angabe"]
-FELDER = [("anrede", "Anrede"), ("dienstgrad", "Dienstgrad"), ("vorname", "Vorname"),
-          ("nachname", "Nachname"), ("strasse", "Straße und Hausnummer"), ("plz", "PLZ"),
-          ("ort", "Ort"), ("email", "E-Mail")]
-EMAIL_RE = re.compile(r"^[^@\s,;]+@[^@\s,;]+\.[^@\s,;]+$")
 
 
 class KontakteTab(ttk.Frame):

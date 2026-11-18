@@ -1,59 +1,16 @@
 """Bereich „Vorlage“: Briefkopf, Texte, Unterschrift, E-Mail-Text und Dateiname bearbeiten."""
 
-import copy
 import tkinter as tk
 from pathlib import Path
 from tkinter import filedialog, messagebox, ttk
 
+from .formulare import ABSCHNITTE, BILD_MASSE, BILD_TITEL, vorlage_aus_formular
 from .generator import unknown_placeholders, vorschau
 from .paths import open_path
 from .pdfgen import SCHRIFTEN
 from .placeholders import PLATZHALTER_HILFE, demo_context, render, safe_filename
-from .storage import BILD_FELDER, DEFAULT_TEMPLATE
+from .storage import DEFAULT_TEMPLATE
 from .widgets import ScrollFrame, text_get, text_set, text_widget
-
-BILD_TITEL = {"logo_links": "Logo links", "logo_rechts": "Logo rechts", "unterschrift": "Unterschrift"}
-BILD_MASSE = {
-    "logo_links": [("x", "X"), ("y", "Y"), ("b", "Breite"), ("h", "Höhe (0 = autom.)")],
-    "logo_rechts": [("x", "X"), ("y", "Y"), ("b", "Breite"), ("h", "Höhe (0 = autom.)")],
-    "unterschrift": [("x", "X"), ("b", "Breite"), ("dy", "Versatz nach unten")],
-}
-
-# (Schlüssel, Beschriftung, Art, Höhe, Hinweis)
-ABSCHNITTE = [
-    ("Briefkopf", [
-        ("logo_links", None, "bild", 0, ""),
-        ("logo_rechts", None, "bild", 0, ""),
-        ("kopf_text", "Text unter dem rechten Logo", "entry", 0, ""),
-        ("schrift", "Schriftart", "schrift", 0,
-         "Arial Narrow wie im Original. Fehlt sie auf dem Rechner, wird die maßgleiche "
-         "„Liberation Sans Narrow“ verwendet."),
-    ]),
-    ("Anschrift und Infoblock", [
-        ("anschrift", "Anschrift", "text", 5, "Leere Zeilen (z. B. ohne Straße) werden weggelassen."),
-        ("infoblock", "Infoblock rechts", "text", 8, "Pro Zeile: Bezeichnung | Wert"),
-        ("datum_bezeichnung", "Datum – Bezeichnung", "entry", 0, ""),
-        ("datum_wert", "Datum – Wert", "entry", 0, ""),
-    ]),
-    ("Brieftext", [
-        ("titel", "Überschrift", "entry", 0, ""),
-        ("anrede", "Anrede", "entry", 0, ""),
-        ("text", "Text", "text", 7, "Zeilenumbruch = neuer Absatz ohne Leerzeile; "
-                                    "Leerzeile = Absatz mit Abstand."),
-        ("gruss", "Grußformel", "text", 2, ""),
-    ]),
-    ("Unterschrift", [
-        ("unterschrift", None, "bild", 0, ""),
-        ("unterzeichner", "Unterzeichner", "text", 3, ""),
-    ]),
-    ("E-Mail", [
-        ("mail_betreff", "Betreff", "entry", 0, ""),
-        ("mail_text", "Text", "text", 10, "Der PDF-Anhang wird automatisch angefügt."),
-    ]),
-    ("Dateiname", [
-        ("dateiname", "Dateiname (ohne .pdf)", "entry", 0, ""),
-    ]),
-]
 
 
 class VorlageTab(ttk.Frame):
@@ -186,20 +143,7 @@ class VorlageTab(ttk.Frame):
 
     def _werte(self) -> dict:
         """Formularwerte als Vorlage; wirft ValueError bei ungültigen Maßen."""
-        roh = self._werte_roh()
-        tpl = copy.deepcopy(self.store.template)
-        for key in self.felder:
-            tpl[key] = roh[key]
-        for slot in BILD_FELDER:
-            spec = {"datei": roh[slot]["datei"]}
-            for key, label in BILD_MASSE[slot]:
-                text = roh[slot][key].strip().replace(",", ".") or "0"
-                try:
-                    spec[key] = round(float(text), 2)
-                except ValueError:
-                    raise ValueError(f"{BILD_TITEL[slot]}: „{roh[slot][key]}“ ist keine Zahl ({label}).") from None
-            tpl[slot] = spec
-        return tpl
+        return vorlage_aus_formular(self.store.template, self._werte_roh())
 
     def lade(self):
         tpl = self.store.template

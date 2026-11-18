@@ -1,0 +1,262 @@
+<!doctype html>
+<html lang="de" data-version="__VERSION__">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta http-equiv="Content-Security-Policy"
+      content="default-src 'self'; script-src 'self'; worker-src 'self'; style-src 'self'; img-src 'self' data: blob:; frame-src blob:; connect-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'">
+<title>Einsatzbescheinigung</title>
+<meta name="description" content="Bescheinigungen über die Teilnahme an einem Einsatz für mehrere Kameraden auf einmal – PDFs nach eigener Vorlage und E-Mail-Entwürfe. Läuft komplett im Browser, die Daten bleiben auf dem eigenen Rechner.">
+<link rel="icon" href="icon.png">
+<link rel="stylesheet" href="style.css?v=__VERSION__">
+<script src="app.js?v=__VERSION__" defer></script>
+</head>
+<body>
+<header class="kopf">
+  <img src="icon.png" alt="" width="32" height="32">
+  <div>
+    <h1>Einsatzbescheinigung</h1>
+    <p class="unterzeile">Browser-Version · Kontakte, Vorlage und Bescheinigungen bleiben in diesem Browser auf diesem Rechner</p>
+  </div>
+</header>
+<div id="warnung" class="warnleiste" hidden></div>
+
+<div id="laden" class="laden">
+  <div class="kreisel" aria-hidden="true"></div>
+  <p id="laden-text">Wird geladen …</p>
+  <p class="hinweis">Beim ersten Öffnen werden einmalig etwa 15 MB geladen, danach geht es schneller.</p>
+</div>
+
+<div id="app" hidden>
+<nav class="reiter" role="tablist">
+  <button role="tab" id="r-einsatz" data-seite="einsatz" aria-selected="true">Einsatz</button>
+  <button role="tab" id="r-verlauf" data-seite="verlauf">Gespeicherte Einsätze</button>
+  <button role="tab" id="r-kontakte" data-seite="kontakte">Kontakte</button>
+  <button role="tab" id="r-vorlage" data-seite="vorlage">Vorlage</button>
+  <button role="tab" id="r-einstellungen" data-seite="einstellungen">Einstellungen</button>
+</nav>
+
+<main>
+<!-- ============================================================ Einsatz -->
+<section id="s-einsatz" class="seite">
+  <div id="einsatz-1">
+    <h2>Schritt 1 von 2 – Einsatz erfassen und Kameraden auswählen</h2>
+    <fieldset class="box">
+      <legend>Einsatz</legend>
+      <div class="einsatz-raster">
+        <div class="formular">
+          <label for="e-nummer">Einsatznummer</label>
+          <div><input id="e-nummer" autocomplete="off" size="18"></div>
+          <label for="e-sd">Beginn</label>
+          <div><input id="e-sd" class="datum" autocomplete="off" aria-label="Beginn Datum"> <input id="e-st" class="uhr" autocomplete="off" aria-label="Beginn Uhrzeit"> Uhr</div>
+          <label for="e-ed">Ende</label>
+          <div><input id="e-ed" class="datum" autocomplete="off" aria-label="Ende Datum"> <input id="e-et" class="uhr" autocomplete="off" aria-label="Ende Uhrzeit"> Uhr</div>
+        </div>
+        <div class="formular rechts">
+          <label for="e-ausst">Ausstellungsdatum</label>
+          <div><input id="e-ausst" class="datum" autocomplete="off"></div>
+          <span></span><div id="e-dauer" class="info" aria-live="polite"></div>
+          <span></span><div class="hinweis">Datum TT.MM.JJJJ · Uhrzeit HH:MM (auch 1159)</div>
+        </div>
+      </div>
+    </fieldset>
+    <div id="e-banner" class="banner" hidden>
+      <span id="e-banner-text"></span>
+      <button type="button" id="e-banner-neu">Neuer Einsatz</button>
+    </div>
+    <fieldset class="box">
+      <legend>Kameraden</legend>
+      <div class="leiste">
+        <label>Suchen <input id="e-filter" type="search" size="22"></label>
+        <button type="button" id="e-alle">Alle auswählen</button>
+        <button type="button" id="e-keine">Auswahl aufheben</button>
+        <span class="platz"></span>
+        <span id="e-anzahl" class="fett"></span>
+      </div>
+      <div class="tabelle-rahmen hoch">
+        <table id="e-liste" class="liste klickbar">
+          <thead><tr>
+            <th class="sel"><input type="checkbox" id="e-alle-cb" aria-label="Alle sichtbaren auswählen"></th>
+            <th>Name</th><th>Dienstgrad</th><th>E-Mail</th><th class="status">Bescheinigung</th>
+          </tr></thead>
+          <tbody></tbody>
+        </table>
+        <p id="e-leer" class="leer" hidden>Noch keine Kontakte vorhanden.<br>Bitte im Bereich „Kontakte“ anlegen oder aus einer CSV-/Excel-Datei importieren.</p>
+      </div>
+    </fieldset>
+    <div class="knopfleiste">
+      <button type="button" id="e-neu">Neuer Einsatz (Felder leeren)</button>
+      <button type="button" id="e-verlauf">Gespeicherte Einsätze …</button>
+      <span class="platz"></span>
+      <button type="button" id="e-weiter" class="primaer">Weiter: Zeiten prüfen →</button>
+    </div>
+  </div>
+
+  <div id="einsatz-2" hidden>
+    <h2>Schritt 2 von 2 – Zeiten je Kamerad prüfen und Bescheinigungen erstellen</h2>
+    <p id="z-kopf"></p>
+    <div class="tabelle-rahmen">
+      <table id="z-liste" class="liste">
+        <thead><tr><th>Kamerad</th><th>Beginn (Datum · Uhrzeit)</th><th>Ende (Datum · Uhrzeit)</th><th>Dauer</th><th></th><th></th></tr></thead>
+        <tbody></tbody>
+      </table>
+    </div>
+    <fieldset class="box">
+      <legend>Ausgabe</legend>
+      <label class="check"><input type="checkbox" id="z-mails"> E-Mail-Entwürfe erstellen</label>
+      <span id="z-mails-info" class="hinweis"></span><br>
+      <label class="check"><input type="checkbox" id="z-sammel"> <span id="z-sammel-text">Sammel-PDF für die Ablage erstellen</span></label>
+    </fieldset>
+    <div class="knopfleiste">
+      <button type="button" id="z-zurueck">← Zurück</button>
+      <span class="platz"></span>
+      <button type="button" id="z-erstellen" class="primaer">PDFs und E-Mail-Entwürfe erstellen</button>
+    </div>
+  </div>
+</section>
+
+<!-- ============================================================ Gespeicherte Einsätze -->
+<section id="s-verlauf" class="seite" hidden>
+  <h2>Gespeicherte Einsätze</h2>
+  <div class="leiste">
+    <span class="hinweis">Jeder erstellte Einsatz wird hier gespeichert. Wurde ein Kamerad vergessen: Einsatz wählen und „Kameraden ergänzen“.</span>
+    <span class="platz"></span>
+    <label>Suchen <input id="v-filter" type="search" size="22"></label>
+  </div>
+  <div class="tabelle-rahmen mittel">
+    <table id="v-liste" class="liste auswahl">
+      <thead><tr><th>Datum</th><th>Zeit</th><th>Einsatznummer</th><th>Bescheinigungen</th><th>Zuletzt erstellt</th></tr></thead>
+      <tbody></tbody>
+    </table>
+    <p id="v-leer" class="leer" hidden>Noch keine Einsätze gespeichert.<br>Sobald im Bereich „Einsatz“ Bescheinigungen erstellt werden, erscheint der Einsatz hier.</p>
+  </div>
+  <div class="knopfleiste">
+    <button type="button" id="v-zip">PDFs herunterladen (ZIP)</button>
+    <button type="button" id="v-sammel">Sammel-PDF ansehen</button>
+    <button type="button" id="v-entfernen">Entfernen …</button>
+    <span class="platz"></span>
+    <button type="button" id="v-ergaenzen" class="primaer">Kameraden ergänzen →</button>
+  </div>
+  <fieldset class="box">
+    <legend>Bescheinigte Kameraden</legend>
+    <div class="tabelle-rahmen">
+      <table id="v-details" class="liste">
+        <thead><tr><th>Name</th><th>Dienstgrad</th><th>Einsatzzeit</th><th>Erstellt</th><th>PDF</th></tr></thead>
+        <tbody></tbody>
+      </table>
+    </div>
+  </fieldset>
+</section>
+
+<!-- ============================================================ Kontakte -->
+<section id="s-kontakte" class="seite" hidden>
+  <h2>Kontakte</h2>
+  <div class="zweispaltig">
+    <div>
+      <div class="leiste">
+        <button type="button" id="k-neu">+ Neuer Kontakt</button>
+        <button type="button" id="k-loeschen">Löschen</button>
+        <span class="platz"></span>
+        <button type="button" id="k-import">Importieren (CSV/Excel) …</button>
+        <button type="button" id="k-export">Exportieren (CSV)</button>
+      </div>
+      <div class="leiste">
+        <label>Suchen <input id="k-filter" type="search" size="26"></label>
+        <span class="platz"></span>
+        <span id="k-anzahl" class="hinweis"></span>
+      </div>
+      <div class="tabelle-rahmen hoch">
+        <table id="k-liste" class="liste auswahl">
+          <thead><tr><th>Name</th><th>Dienstgrad</th><th>E-Mail</th><th>Ort</th></tr></thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </div>
+    <fieldset class="box">
+      <legend>Kontakt bearbeiten</legend>
+      <form id="k-form" class="formular" autocomplete="off"></form>
+      <p id="k-meldung" aria-live="polite"></p>
+      <div class="knopfleiste">
+        <span class="platz"></span>
+        <button type="button" id="k-verwerfen">Verwerfen</button>
+        <button type="submit" form="k-form" class="primaer">Speichern</button>
+      </div>
+      <p class="hinweis">Der Dienstgrad kann frei eingegeben werden. In der Vorlage steht er als Platzhalter {Dienstgrad} zur Verfügung.</p>
+    </fieldset>
+  </div>
+</section>
+
+<!-- ============================================================ Vorlage -->
+<section id="s-vorlage" class="seite" hidden>
+  <h2>Vorlage</h2>
+  <div class="vorlage-raster">
+    <div id="vl-formular"></div>
+    <aside class="seitenleiste">
+      <fieldset class="box">
+        <legend>Aktionen</legend>
+        <button type="button" id="vl-speichern" class="primaer breit">Speichern</button>
+        <button type="button" id="vl-vorschau" class="breit">Vorschau-PDF ansehen</button>
+        <button type="button" id="vl-verwerfen" class="breit">Änderungen verwerfen</button>
+        <p id="vl-status" class="hinweis" aria-live="polite"></p>
+        <hr>
+        <button type="button" id="vl-export" class="breit">Vorlage exportieren</button>
+        <button type="button" id="vl-import" class="breit">Vorlage importieren …</button>
+        <button type="button" id="vl-standard" class="breit">Beispieltexte (Musterstadt) einsetzen</button>
+      </fieldset>
+      <fieldset class="box">
+        <legend>Platzhalter</legend>
+        <p class="hinweis">Doppelklick fügt den Platzhalter an der Cursorposition ein.</p>
+        <div class="tabelle-rahmen mittel">
+          <table id="vl-platzhalter" class="liste auswahl kompakt">
+            <thead><tr><th>Platzhalter</th><th>Bedeutung</th></tr></thead>
+            <tbody></tbody>
+          </table>
+        </div>
+        <div class="knopfleiste"><span class="platz"></span><button type="button" id="vl-einfuegen">Einfügen</button></div>
+      </fieldset>
+    </aside>
+  </div>
+</section>
+
+<!-- ============================================================ Einstellungen -->
+<section id="s-einstellungen" class="seite" hidden>
+  <h2>Einstellungen</h2>
+  <fieldset class="box">
+    <legend>E-Mail</legend>
+    <div class="formular">
+      <label for="s-bcc">Kopie (BCC) an</label>
+      <div><input id="s-bcc" size="46" autocomplete="off"><div id="s-bcc-info" class="hinweis">Optional. Mehrere Adressen mit Komma trennen.</div></div>
+      <span></span>
+      <label class="check"><input type="checkbox" id="s-mails"> E-Mail-Entwürfe standardmäßig erstellen</label>
+    </div>
+    <p class="hinweis">Im Browser entstehen die Entwürfe als <b>.eml-Dateien mit PDF-Anhang</b>: Outlook (klassisch) und Thunderbird öffnen sie per Doppelklick als bearbeitbaren Entwurf. Alternativ öffnet „Im Mailprogramm öffnen“ eine neue Mail mit Empfänger, Betreff und Text – das PDF dann bitte selbst anhängen. Gesendet wird immer nur von Ihnen selbst.</p>
+  </fieldset>
+  <fieldset class="box">
+    <legend>Ablage</legend>
+    <label class="check"><input type="checkbox" id="s-sammel"> Sammel-PDF (alle Bescheinigungen eines Einsatzes) standardmäßig erstellen</label>
+    <p class="hinweis">Die PDFs bleiben im Browser gespeichert, damit sich vergessene Kameraden später ergänzen lassen. Unter „Gespeicherte Einsätze“ lassen sie sich jederzeit wieder herunterladen.</p>
+  </fieldset>
+  <fieldset class="box">
+    <legend>Daten in diesem Browser</legend>
+    <p>Kontakte, Vorlage, Einstellungen und Bescheinigungen werden nur in diesem Browser auf diesem Rechner gespeichert – nichts davon wird an einen Server übertragen.</p>
+    <p id="s-speicher" class="hinweis"></p>
+    <p class="warnung">Werden die Browserdaten gelöscht (z. B. „Browserdaten löschen“ oder eine Firmenrichtlinie beim Schließen des Browsers), sind auch diese Daten weg. Deshalb regelmäßig eine Datensicherung herunterladen – mit ihr lässt sich auch auf einen anderen Rechner umziehen.</p>
+    <div class="knopfleiste">
+      <button type="button" id="s-sicherung" class="primaer">Datensicherung herunterladen</button>
+      <button type="button" id="s-laden">Datensicherung einspielen …</button>
+    </div>
+  </fieldset>
+  <p class="fuss">
+    Einsatzbescheinigung <span class="version"></span> (Browser-Version) · freie Software unter der MIT-Lizenz ·
+    <button type="button" class="link" id="s-lizenzen">Lizenzen …</button> ·
+    <a href="https://github.com/CptCool/Einsatzbescheinigung" target="_blank" rel="noopener">Quelltext und Desktop-Version</a>
+  </p>
+</section>
+</main>
+</div>
+
+<div id="warten" class="warten" hidden>
+  <div class="warten-box"><div class="kreisel" aria-hidden="true"></div><p id="warten-text">Bitte warten …</p></div>
+</div>
+</body>
+</html>

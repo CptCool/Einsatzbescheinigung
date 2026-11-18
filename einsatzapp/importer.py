@@ -97,7 +97,7 @@ def auto_zuordnung(headers: list[str]) -> dict[str, int | None]:
     mapping: dict[str, int | None] = {key: None for key, _ in ZIELFELDER}
     taken: set[int] = set()
     for key, _ in ZIELFELDER:
-        for syn in _SYNONYME[key]:
+        for syn in map(_norm, _SYNONYME[key]):  # gleich normalisieren wie die Spaltenköpfe
             if syn in normed and normed.index(syn) not in taken:
                 mapping[key] = normed.index(syn)
                 taken.add(mapping[key])

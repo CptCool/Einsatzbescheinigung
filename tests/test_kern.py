@@ -146,6 +146,7 @@ class ImportTest(unittest.TestCase):
         self.assertEqual(headers[mapping["dienstgrad"]], "DG")
         kontakte = wende_an(headers, rows, mapping)
         self.assertEqual(len(kontakte), 2)
+        self.assertEqual(kontakte[0]["email"], "max@example.org")  # Spalte „E-Mail“ mit Bindestrich
         self.assertEqual(kontakte[0]["plz"], "01067")
         self.assertEqual(kontakte[1]["anrede"], "Frau")
         self.assertEqual(kontakte[1]["nachname"], "Müller")

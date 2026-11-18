@@ -79,9 +79,80 @@ jobs:
           path: Einsatzbescheinigung-*.*
           if-no-files-found: error
 
+  web:
+    name: Browser-Version
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.12"
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: "24"
+
+      - name: Browser-Version bauen (Pyodide und Pakete mit Prüfsumme)
+        run: python tools/web_bauen.py --ziel _site
+
+      - name: Browser installieren
+        run: |
+          npm ci --prefix tests/web --no-audit --no-fund
+          tests/web/node_modules/.bin/playwright install --with-deps chromium firefox webkit
+
+      - name: Browser-Test Chromium (Chrome, Edge)
+        run: BROWSER=chromium node tests/web/e2e.mjs _site test-bilder
+
+      - name: Browser-Test Firefox
+        run: BROWSER=firefox node tests/web/e2e.mjs _site test-bilder
+
+      - name: Browser-Test WebKit (Safari)
+        run: BROWSER=webkit node tests/web/e2e.mjs _site test-bilder
+
+      - name: Bildschirmfotos bei Fehlern
+        if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: browser-test-bilder
+          path: test-bilder
+
+      - name: Paket
+        run: cd _site && zip -qr ../Einsatzbescheinigung-Web.zip .
+
+      - uses: actions/upload-artifact@v7
+        with:
+          name: Einsatzbescheinigung-Web
+          path: Einsatzbescheinigung-Web.zip
+          if-no-files-found: error
+
+      - name: Für GitHub Pages bereitstellen
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: actions/upload-pages-artifact@v5
+        with:
+          path: _site
+
+  pages:
+    name: GitHub Pages
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: [build, web]
+    runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
+    concurrency:
+      group: pages
+      cancel-in-progress: false
+    environment:
+      name: github-pages
+      url: ${{ steps.deploy.outputs.page_url }}
+    steps:
+      - id: deploy
+        uses: actions/deploy-pages@v5
+
   release:
     if: startsWith(github.ref, 'refs/tags/v')
-    needs: build
+    needs: [build, web]
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -89,6 +160,7 @@ jobs:
       - uses: actions/download-artifact@v8
         with:
           path: pakete
+          pattern: Einsatzbescheinigung-*
           merge-multiple: true
       - name: Release anlegen
         env:
@@ -97,4 +169,4 @@ jobs:
           gh release create "${GITHUB_REF_NAME}" pakete/* \
             --repo "${GITHUB_REPOSITORY}" \
             --title "Einsatzbescheinigung ${GITHUB_REF_NAME}" \
-            --notes "Downloads: macOS (Apple Silicon) als .zip, Windows als .exe, Linux als .tar.gz. Installationshinweise siehe README."
+            --notes "Ohne Installation im Browser: https://cptcool.github.io/Einsatzbescheinigung/ – Downloads: macOS (Apple Silicon) als .zip, Windows als .exe, Linux als .tar.gz, Browser-Version zum Selbst-Hosten als Einsatzbescheinigung-Web.zip. Hinweise siehe README."

@@ -1,7 +1,8 @@
 """Lizenzhinweise: MIT-Lizenz der App und Lizenzen der mitgelieferten Komponenten.
 
 Beim Bauen (siehe einsatzbescheinigung.spec) entsteht daraus LIZENZEN.txt im Programmpaket.
-Die App zeigt den Text unter Einstellungen › Lizenzen an.
+Die App zeigt den Text unter Einstellungen › Lizenzen an. Die Browser-Version (Pyodide) erzeugt
+den Text beim Anzeigen – dort gehören Pyodide und Python 3.14 statt Tcl/Tk und PyInstaller dazu.
 """
 
 import sys
@@ -56,7 +57,23 @@ def paket_lizenztexte(name: str) -> list[tuple[str, str]]:
     return texte
 
 
+def _web() -> bool:
+    """Läuft die App im Browser (Pyodide/Emscripten)?"""
+    return sys.platform == "emscripten"
+
+
+def _pyodide_version() -> str:
+    try:
+        import pyodide
+
+        return pyodide.__version__
+    except Exception:  # noqa: BLE001 – nur für die Anzeige
+        return ""
+
+
 def _python_lizenz() -> str:
+    if _web():
+        return (TEXTE / "Python-LICENSE.txt").read_text(encoding="utf-8")
     basis = Path(sys.base_prefix)
     kandidaten = [basis / "lib" / f"python{sys.version_info.major}.{sys.version_info.minor}" / "LICENSE.txt",
                   basis / "LICENSE.txt", basis / "Lib" / "LICENSE.txt"]
@@ -78,23 +95,32 @@ def _tk_version() -> str:
 def erzeuge_text() -> str:
     """Kompletter Lizenztext aus dem Quelltext-Stand (beim Bauen bzw. ohne Programmpaket)."""
     python = sys.version.split()[0]
-    tk = _tk_version()
+    web = _web()
+    tk = "" if web else _tk_version()
     zeilen = [(name, metadata.version(name), lizenz) for name, lizenz, _ in PAKETE]
     zeilen += [(name.rsplit(" ", 1)[0], name.rsplit(" ", 1)[1], lizenz) for name, lizenz, _ in SCHRIFTEN]
-    zeilen += [("Python", python, "PSF-2.0"), ("Tcl/Tk", tk, "Tcl/Tk-Lizenz (BSD-artig)"),
-               ("PyInstaller-Bootloader", "", "GPL-2.0 mit Ausnahme für damit gebaute Programme")]
+    if web:
+        zeilen += [("Python", python, "PSF-2.0"), ("Pyodide", _pyodide_version(), "MPL-2.0")]
+    else:
+        zeilen += [("Python", python, "PSF-2.0"), ("Tcl/Tk", tk, "Tcl/Tk-Lizenz (BSD-artig)"),
+                   ("PyInstaller-Bootloader", "", "GPL-2.0 mit Ausnahme für damit gebaute Programme")]
     tabelle = "\n".join(f"  {n:<24} {v:<10} {lz}" for n, v, lz in zeilen)
 
+    enthalten = ("Die Browser-Version lädt\naußerdem" if web else "Die fertigen Programme\nenthalten außerdem")
+    neu_bauen = ("die Browser-Version neu baut (tools/web_bauen.py)" if web
+                 else "die App aus dem Quelltext startet oder neu baut (README)")
     kopf = (
-        f"{APP_NAME} {__version__}\n"
+        f"{APP_NAME} {__version__}{' (Browser-Version)' if web else ''}\n"
         f"Quelltext: {QUELLTEXT}\n\n"
-        f"{APP_NAME} ist freie Software unter der MIT-Lizenz (Abschnitt 1). Die fertigen Programme\n"
-        "enthalten außerdem Komponenten anderer Autoren, die unter deren eigenen Lizenzen stehen:\n\n"
+        f"{APP_NAME} ist freie Software unter der MIT-Lizenz (Abschnitt 1). {enthalten} "
+        "Komponenten anderer Autoren, die unter deren eigenen Lizenzen stehen:\n\n"
         f"  {'Komponente':<24} {'Version':<10} Lizenz\n{tabelle}\n\n"
         "Hinweis zu fpdf2 (LGPL-3.0): fpdf2 wird unverändert verwendet. Da der vollständige\n"
         "Quelltext dieser App öffentlich ist, lässt sich fpdf2 gegen eine andere oder geänderte\n"
-        "Version austauschen, indem man die App aus dem Quelltext startet oder neu baut (README).\n"
-        "Quelltext von fpdf2: https://github.com/py-pdf/fpdf2\n\n"
+        f"Version austauschen, indem man {neu_bauen}.\n"
+        "Quelltext von fpdf2: https://github.com/py-pdf/fpdf2\n"
+        + ("Quelltext von Pyodide (MPL-2.0): https://github.com/pyodide/pyodide\n" if web else "")
+        + "\n"
     )
     teile = [kopf, _abschnitt(f"1. {APP_NAME} – MIT License", EIGENE_LIZENZ.read_text(encoding="utf-8"))]
     nr = 2
@@ -111,8 +137,12 @@ def erzeuge_text() -> str:
         nr += 1
     teile.append(_abschnitt(f"{nr}. Python {python} – PSF-2.0", _python_lizenz()))
     nr += 1
-    teile.append(_abschnitt(f"{nr}. Tcl/Tk {tk} – Tcl/Tk-Lizenz",
-                            (TEXTE / "Tcl-Tk.txt").read_text(encoding="utf-8")))
+    if web:
+        teile.append(_abschnitt(f"{nr}. Pyodide {_pyodide_version()} – Mozilla Public License 2.0",
+                                (TEXTE / "MPL-2.0.txt").read_text(encoding="utf-8")))
+    else:
+        teile.append(_abschnitt(f"{nr}. Tcl/Tk {tk} – Tcl/Tk-Lizenz",
+                                (TEXTE / "Tcl-Tk.txt").read_text(encoding="utf-8")))
     nr += 1
     teile.append(_abschnitt(f"{nr}. GNU General Public License 3.0 (Grundlage der LGPL-3.0 von fpdf2)",
                             (TEXTE / "GPL-3.0.txt").read_text(encoding="utf-8")))

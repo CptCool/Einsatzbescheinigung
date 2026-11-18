@@ -1,8 +1,12 @@
 # Einsatzbescheinigung
 
-Desktop-App für macOS, Windows und Linux. Sie erstellt für mehrere Kameraden in einem Durchgang
-**Bescheinigungen über die Teilnahme an einem Einsatz** (zur Vorlage beim Arbeitgeber) als PDF
-und bereitet für jeden Kameraden einen **E-Mail-Entwurf mit PDF-Anhang** im Mailprogramm vor.
+Desktop-App für macOS, Windows und Linux – und als **Browser-Version ohne Installation**. Sie
+erstellt für mehrere Kameraden in einem Durchgang **Bescheinigungen über die Teilnahme an einem
+Einsatz** (zur Vorlage beim Arbeitgeber) als PDF und bereitet für jeden Kameraden einen
+**E-Mail-Entwurf mit PDF-Anhang** vor.
+
+**Ohne Installation im Browser starten: https://cptcool.github.io/Einsatzbescheinigung/**
+(z. B. auf einem Firmenrechner ohne Administratorrechte – siehe [Browser-Version](#browser-version)).
 
 **Gesendet wird nie automatisch.** Jeder Entwurf öffnet sich im Mailprogramm und wird von Hand
 geprüft und abgeschickt (Human-in-the-loop).
@@ -82,6 +86,8 @@ erlauben (änderbar unter *Systemeinstellungen › Datenschutz & Sicherheit › 
 
 Fertige Programme stehen unter **Releases** (gebaut von GitHub Actions):
 
+- **Ohne Installation**: https://cptcool.github.io/Einsatzbescheinigung/ im Browser öffnen
+  (siehe [Browser-Version](#browser-version)).
 - **macOS** (Apple Silicon): `Einsatzbescheinigung-macOS.zip` entpacken und die App in *Programme*
   ziehen. Die App ist nicht von Apple signiert. Beim ersten Start daher per Rechtsklick › *Öffnen*
   starten, oder unter *Systemeinstellungen › Datenschutz & Sicherheit* „Dennoch öffnen“ wählen.
@@ -89,7 +95,7 @@ Fertige Programme stehen unter **Releases** (gebaut von GitHub Actions):
   *Weitere Informationen › Trotzdem ausführen* klicken.
 - **Linux**: `tar -xzf Einsatzbescheinigung-Linux.tar.gz && ./Einsatzbescheinigung`
 
-Eine neue Version entsteht durch ein Git-Tag, z. B. `git tag v1.1.2 && git push origin v1.1.2`
+Eine neue Version entsteht durch ein Git-Tag, z. B. `git tag v1.2.1 && git push origin v1.2.1`
 (vorher `__version__` in `einsatzapp/__init__.py` anpassen).
 
 ### Aus dem Quelltext starten
@@ -101,6 +107,44 @@ python3 -m venv .venv
 ```
 
 Benötigt Python ≥ 3.10 mit Tkinter. Tests: `python -m unittest discover -s tests -t .`
+
+## Browser-Version
+
+Die Browser-Version läuft komplett im Browser (Edge, Chrome, Firefox oder Safari in aktueller
+Version) und braucht weder Installation noch Administratorrechte. Python läuft dafür per
+[Pyodide](https://pyodide.org) direkt im Browser – mit **demselben Code** wie die Desktop-App,
+die PDFs sind also identisch. Bedienung und Bereiche sind die gleichen.
+
+- **Daten bleiben auf dem Rechner.** Kontakte, Vorlage, Einstellungen und die erstellten PDFs
+  liegen nur im Speicher dieses Browsers (IndexedDB) und werden an keinen Server übertragen.
+  Die Website selbst lädt nichts von fremden Servern nach.
+- **Datensicherung.** Werden die Browserdaten gelöscht (von Hand oder per Firmenrichtlinie beim
+  Schließen), sind die Daten weg. Unter *Einstellungen › Datensicherung herunterladen* entsteht
+  eine ZIP-Datei, die sich auch in einem anderen Browser oder auf einem anderen Rechner einspielen
+  lässt. Vorlagen (`.einsatzvorlage`) und Kontaktlisten (CSV/Excel) sind mit der Desktop-App
+  austauschbar.
+- **E-Mail-Entwürfe.** Ein Browser darf Outlook & Co. nicht fernsteuern. Deshalb entsteht je
+  Kamerad eine **.eml-Datei mit PDF-Anhang**: herunterladen und öffnen – Outlook (klassisch) und
+  Thunderbird zeigen sie als bearbeitbaren Entwurf. Alternativ öffnet *Im Mailprogramm öffnen*
+  eine neue Mail mit Empfänger, Betreff und Text; das PDF wird dann von Hand angehängt. Alles auf
+  einmal gibt es als ZIP.
+- **Schrift.** Im Browser wird immer die maßgleiche *Liberation Sans Narrow* verwendet (Arial
+  Narrow ist dort nicht verfügbar) – das Layout bleibt gleich.
+- Die App sollte nur in **einem** Tab geöffnet sein; ein zweiter Tab weist darauf hin.
+
+Die Browser-Version entsteht bei jedem Release automatisch (GitHub Actions → GitHub Pages) und
+liegt dem Release außerdem als `Einsatzbescheinigung-Web.zip` bei – zum Betrieb auf einem eigenen
+Webserver (z. B. im Intranet; nötig ist nur ein statischer Webserver, der `.wasm`-Dateien als
+`application/wasm` ausliefert).
+
+Selbst bauen und testen:
+
+```bash
+python tools/web_bauen.py                  # → build/web (lädt Pyodide und Pakete, prüft Prüfsummen)
+python -m http.server -d build/web 8000    # dann http://localhost:8000 öffnen
+npm ci --prefix tests/web && tests/web/node_modules/.bin/playwright install chromium
+node tests/web/e2e.mjs build/web           # klickt den kompletten Ablauf im Browser durch
+```
 
 ## Daten & Datenschutz
 
@@ -130,5 +174,5 @@ Einsatzbescheinigung ist freie Software unter der [MIT-Lizenz](LICENSE).
 Eingebundene Komponenten stehen unter ihren eigenen Lizenzen: fpdf2 (LGPL-3.0), pypdf
 (BSD-3-Clause), openpyxl und et_xmlfile (MIT), Pillow (MIT-CMU), fontTools (MIT) sowie die
 Liberation-Schriften (SIL OFL 1.1 bzw. GPLv2 mit Font-Ausnahme). Die fertigen Programme enthalten
-zusätzlich Python (PSF-Lizenz) und Tcl/Tk (BSD-artig). Alle Lizenztexte zeigt die App unter
+zusätzlich Python (PSF-Lizenz) und Tcl/Tk (BSD-artig), die Browser-Version Pyodide (MPL-2.0). Alle Lizenztexte zeigt die App unter
 *Einstellungen › Lizenzen …*; beim Bauen werden sie von `einsatzapp/lizenzinfo.py` zusammengestellt.

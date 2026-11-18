@@ -16,6 +16,9 @@ private/
 *.csv
 *.xlsx
 
+# Browser-Test
+tests/web/node_modules/
+
 # Lokale Dateien
 .DS_Store
 /Einsatzbescheinigung

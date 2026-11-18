@@ -7,7 +7,7 @@ from tkinter import filedialog, messagebox, simpledialog, ttk
 
 from . import __version__
 from .generator import vorschau
-from .kontakte_ui import EMAIL_RE
+from .formulare import EMAIL_RE
 from .lizenzinfo import QUELLTEXT
 from .lizenzinfo import text as lizenztext
 from .mailer import PROGRAMME, Entwurf, Mailer, ermittle_auto, verfuegbare_programme
